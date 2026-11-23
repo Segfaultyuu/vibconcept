@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070a">
+<title>矿脉等级 · MINERAL GRADES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=DM+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#07070a;
+  --ink-2:#0d0d12;
+  --paper:#e8e6e1;
+  --dim:rgba(232,230,225,.42);
+  --faint:rgba(232,230,225,.16);
+  --display:"Cinzel","Songti SC",serif;
+  --mono:"DM Mono",ui-monospace,Menlo,monospace;
+  --han:"Noto Serif SC","Songti SC",serif;
+
+  --glow:#ff5a1f;          /* 由 JS 按当前等级替换 */
+  --glow-soft:rgba(255,90,31,.5);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:var(--mono);
+  -webkit-font-smoothing:antialiased;
+  user-select:none;
+  cursor:default;
+}
+
+/* ───── 氛围层：整个空间被当前等级的光染色 ───── */
+.ambient{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  transition:background 1.1s cubic-bezier(.4,0,.2,1);
+  background:
+    radial-gradient(62% 48% at 50% 46%, var(--glow-soft), transparent 68%),
+    radial-gradient(120% 90% at 50% 120%, rgba(0,0,0,.92), transparent 55%),
+    linear-gradient(180deg,#0a0a0f 0%,var(--ink) 55%,#05050a 100%);
+  opacity:.9;
+}
+.vignette{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(130% 100% at 50% 50%, transparent 38%, rgba(0,0,0,.72) 100%);
+}
+.grain{
+  position:fixed;inset:-50%;z-index:4;pointer-events:none;opacity:.2;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  animation:grain 8s steps(7,end) infinite;
+}
+@keyframes grain{
+  0%{transform:translate(0,0)}  25%{transform:translate(-2%,1.5%)}
+  50%{transform:translate(1.5%,-2%)} 75%{transform:translate(-1%,-1%)} 100%{transform:translate(0,0)}
+}
+
+/* ───── 顶部 ───── */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:6;
+  padding:28px clamp(20px,4vw,52px);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:20px;
+  pointer-events:none;
+}
+.brand-cn{
+  font-family:var(--han);font-weight:600;font-size:15px;letter-spacing:.34em;
+  color:var(--paper);text-indent:.34em;
+}
+.brand-en{
+  margin-top:6px;font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim);
+}
+.hint{
+  font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+  text-align:right;line-height:2;
+}
+.hint b{color:var(--paper);font-weight:400}
+
+/* ───── 舞台 ───── */
+.stage{
+  position:relative;z-index:5;height:100%;
+  display:flex;align-items:center;
+  overflow:hidden;
+  touch-action:pan-y;
+  cursor:grab;
+}
+.stage.dragging{cursor:grabbing}
+
+.ghost-num{
+  position:absolute;left:50%;top:50%;z-index:-1;
+  transform:translate(-50%,-62%);
+  font-family:var(--display);font-weight:900;
+  font-size:clamp(200px,34vw,400px);line-height:1;
+  color:transparent;-webkit-text-stroke:1px rgba(232,230,225,.045);
+  pointer-events:none;letter-spacing:-.04em;
+}
+
+.track{
+  display:flex;align-items:center;
+  will-change:transform;
+  transition:transform .78s cubic-bezier(.22,1,.26,1);
+}
+.track.nosnap{transition:none}
+
+.card{
+  flex:0 0 auto;
+  width:clamp(260px,34vw,430px);
+  padding:0 clamp(10px,2vw,26px);
+  display:flex;flex-direction:column;align-items:center;
+  opacity:.26;
+  transform:scale(.68);
+  transition:opacity .7s cubic-bezier(.22,1,.26,1), transform .7s cubic-bezier(.22,1,.26,1), filter .7s;
+  filter:saturate(.45);
+}
+.card.near{opacity:.5;transform:scale(.78);filter:saturate(.7)}
+.card.active{opacity:1;transform:scale(1);filter:none}
+
+/* ───── 石头 ───── */
+.stone{
+  position:relative;
+  width:100%;aspect-ratio:1/1;
+  display:grid;place-items:center;
+  cursor:pointer;
+}
+.stone-inner{
+  position:relative;width:86%;aspect-ratio:1/1;
+  animation:bob 7s ease-in-out infinite;
+}
+@keyframes bob{
+  0%,100%{transform:translateY(-1.2%)}
+  50%{transform:translateY(1.6%)}
+}
+
+/* 外发光 */
+.halo{
+  position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1/1;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 50% 50%, var(--c-glow) 0%, transparent 62%);
+  opacity:.22;filter:blur(26px);
+  transition:opacity .5s, filter .5s;
+  pointer-events:none;
+}
+.card.active .halo{opacity:.4}
+.stone:hover .halo{opacity:.62;filter:blur(32px)}
+
+/* 地面光斑 */
+.puddle{
+  position:absolute;left:50%;bottom:-2%;width:74%;height:9%;
+  transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 50%, var(--c-glow) 0%, transparent 70%);
+  opacity:.3;filter:blur(11px);pointer-events:none;
+  transition:opacity .5s, width .5s;
+}
+.stone:hover .puddle{opacity:.5;width:84%}
+
+/* 转动层：只有刻面网格参与旋转 */
+.spin{position:absolute;inset:0;transform-origin:50% 50%}
+.stone:hover .spin{animation:turn 11s linear infinite}
+@keyframes turn{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+
+.stone img{
+  display:block;width:100%;height:100%;
+  object-fit:contain;
+  -webkit-user-drag:none;
+  transition:filter .45s;
+}
+/* 发光只给当前等级，否则邻级会被描出一圈白边 */
+.card.active .stone img{filter:drop-shadow(0 0 22px var(--c-glow))}
+.card.active .stone:hover img{filter:drop-shadow(0 0 38px var(--c-glow))}
+
+/* ───── 铭牌 ───── */
+.plate{
+  margin-top:clamp(2px,1.4vh,18px);
+  text-align:center;
+  opacity:0;transform:translateY(10px);
+  transition:opacity .55s .1s, transform .55s .1s;
+  pointer-events:none;
+}
+.card.active .plate{opacity:1;transform:none}
+
+.lv{
+  font-size:9.5px;letter-spacing:.34em;text-transform:uppercase;
+  color:var(--c-glow);text-indent:.34em;
+  filter:brightness(1.5);
+  text-shadow:0 0 14px var(--c-glow);
+}
+.name-en{
+  margin-top:9px;
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(26px,3.4vw,42px);line-height:1.05;letter-spacing:.02em;
+  color:#fbfaf8;
+  text-shadow:0 2px 26px rgba(0,0,0,.9), 0 0 36px var(--c-glow);
+}
+.name-cn{
+  margin-top:7px;
+  font-family:var(--han);font-weight:400;font-size:14.5px;letter-spacing:.16em;
+  color:rgba(240,238,234,.86);
+}
+.desc{
+  margin:12px auto 0;max-width:30ch;
+  font-family:var(--han);font-size:12.5px;line-height:1.85;letter-spacing:.04em;
+  color:rgba(232,230,225,.68);
+}
+.meter{
+  margin:14px auto 0;width:112px;height:1px;background:var(--faint);position:relative;
+}
+.meter i{
+  position:absolute;left:0;top:0;height:100%;background:var(--c-glow);
+  box-shadow:0 0 8px var(--c-glow);
+}
+
+/* ───── 底部等级轨 ───── */
+.rail{
+  position:fixed;left:0;right:0;bottom:0;z-index:7;
+  padding:0 clamp(20px,4vw,52px) calc(22px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;justify-content:center;gap:0;
+}
+.rail-inner{
+  display:flex;align-items:center;gap:clamp(10px,2.2vw,26px);
+  position:relative;padding-top:18px;
+}
+.rail-line{
+  position:absolute;left:0;right:0;top:0;height:1px;background:var(--faint);
+}
+.rail-fill{
+  position:absolute;left:0;top:0;height:1px;background:var(--c-glow);
+  box-shadow:0 0 10px var(--c-glow);
+  transition:width .7s cubic-bezier(.22,1,.26,1), background .9s;
+}
+.tick{
+  background:none;border:none;padding:6px 2px;cursor:pointer;
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  color:var(--faint);
+  transition:color .4s, transform .4s;
+}
+.tick:hover{color:rgba(232,230,225,.6)}
+.tick.on{color:var(--paper);transform:translateY(-1px)}
+.tick.on::after{
+  content:"";display:block;width:3px;height:3px;border-radius:50%;
+  background:var(--c-glow);box-shadow:0 0 7px var(--c-glow);
+  margin:5px auto 0;
+}
+
+/* ───── 左右按钮 ───── */
+.nav{
+  position:fixed;top:50%;z-index:8;transform:translateY(-50%);
+  width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--faint);background:rgba(10,10,15,.5);
+  backdrop-filter:blur(8px);
+  color:var(--paper);font-size:15px;line-height:1;
+  display:grid;place-items:center;cursor:pointer;
+  transition:border-color .3s, background .3s, opacity .3s, transform .3s;
+}
+.nav:hover{border-color:rgba(232,230,225,.4);background:rgba(18,18,26,.7)}
+.nav:active{transform:translateY(-50%) scale(.93)}
+.nav[disabled]{opacity:.2;cursor:default}
+.nav.prev{left:clamp(12px,2.4vw,34px)}
+.nav.next{right:clamp(12px,2.4vw,34px)}
+
+@media (max-width:640px){
+  .nav{display:none}
+  .desc{display:none}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.14s!important}
+  .stone:hover .spin{animation:none}
+  .stone-inner{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div class="ambient" id="ambient"></div>
+
+<header>
+  <div>
+    <div class="brand-cn">矿脉等级</div>
+    <div class="brand-en">mineral grades · i—ix</div>
+  </div>
+  <div class="hint">
+    <div><b>← →</b> / 拖拽 切换等级</div>
+    <div>悬停石头 <b>转动</b></div>
+  </div>
+</header>
+
+<main class="stage" id="stage">
+  <div class="ghost-num" id="ghostNum">I</div>
+  <div class="track" id="track"></div>
+</main>
+
+<button class="nav prev" id="prev" aria-label="上一级">&#10094;</button>
+<button class="nav next" id="next" aria-label="下一级">&#10095;</button>
+
+<div class="rail">
+  <div class="rail-inner" id="railInner">
+    <div class="rail-line"></div>
+    <div class="rail-fill" id="railFill"></div>
+  </div>
+</div>
+
+<div class="vignette"></div>
+<div class="grain"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ═══════════ 等级数据 ═══════════ */
+  const TIERS = [
+    { en:"Meteorite",     cn:"陨石",     sub:"Meteorite",
+      desc:"来自天外，带着还没冷却下来的火。",
+      ramp:["#131317","#34343b","#6d6d78"], glow:"#ff4d12", veins:"#ff6a1a", veinPower:1.5, trans:0 },
+    { en:"Raw Ore",       cn:"原矿",     sub:"Iron Ore",
+      desc:"杂质和可能性还混在一起，谁也没分开。",
+      ramp:["#2b1c12","#6b4327","#a8734a"], glow:"#8a4a22", veins:"#c98a4a", veinPower:.35, trans:0 },
+    { en:"Refined Metal", cn:"精炼金属", sub:"Steel Ingot",
+      desc:"去掉了多余的东西，第一次有了形状。",
+      ramp:["#2f3338","#7b828b","#dde3ea"], glow:"#9fb4c6", veins:"#eaf2fa", veinPower:.3, trans:0 },
+    { en:"Copper",        cn:"铜",       sub:"Copper",
+      desc:"人类最早驯服的那一种金属光。",
+      ramp:["#3d1a08","#a9501c","#ff9f57"], glow:"#ff6a1a", veins:"#ffb067", veinPower:1.15, trans:.15 },
+    { en:"Silver",        cn:"银",       sub:"Silver",
+      desc:"冷白，映得出站在它面前的人。",
+      ramp:["#3a4046","#99a2ab","#f4f7fa"], glow:"#cfdae4", veins:"#ffffff", veinPower:.45, trans:.1 },
+    { en:"Gold",          cn:"金",       sub:"Gold",
+      desc:"不跟岁月起反应的那一种。",
+      ramp:["#45300a","#c59213","#ffe390"], glow:"#ffb300", veins:"#fff0b0", veinPower:1.05, trans:.2 },
+    { en:"Amber",         cn:"琥珀",     sub:"Amber",
+      desc:"把一段时间封在里面，就不走了。",
+      ramp:["#50220a","#d4780d","#ffcc66"], glow:"#ff8c05", veins:"#ffd98a", veinPower:.85, trans:.55 },
+    { en:"Jadeite",       cn:"翡翠",     sub:"Jadeite",
+      desc:"绿得有重量，不是涂上去的那种绿。",
+      ramp:["#07301d","#15a05a","#8fffbe"], glow:"#22e06a", veins:"#c9ffdf", veinPower:.7, trans:.6 },
+    { en:"Gemstone",      cn:"宝石级",   sub:"Gemstone",
+      desc:"所有的光进去以后，就在里面分了家。",
+      ramp:["#2a1150","#7c3aed","#e9d5ff"], glow:"#b45cf5", veins:"#ffffff", veinPower:1.3, trans:.7, irid:true }
+  ];
+  const ROMAN=["I","II","III","IV","V","VI","VII","VIII","IX"];
+
+  /* ═══════════ 工具 ═══════════ */
+  function hex2rgb(h){ h=h.replace('#','');
+    return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+
+  /* ═══════════ 构建 DOM ═══════════ */
+  const track=document.getElementById('track');
+  const railInner=document.getElementById('railInner');
+  const railFill=document.getElementById('railFill');
+  const ghostNum=document.getElementById('ghostNum');
+  const ambient=document.getElementById('ambient');
+  const stage=document.getElementById('stage');
+  const prevBtn=document.getElementById('prev');
+  const nextBtn=document.getElementById('next');
+
+  TIERS.forEach(function(t,i){
+    const card=document.createElement('article');
+    card.className='card';
+    card.style.setProperty('--c-glow',t.glow);
+    card.innerHTML=''
+      +'<div class="stone" tabindex="0" role="img" aria-label="'+(i+1)+' '+t.en+' '+t.cn+'">'
+      +  '<div class="halo"></div>'
+      +  '<div class="stone-inner" style="animation-delay:'+(i*.45).toFixed(2)+'s">'
+      +    '<div class="spin"><img src="'+(i+1)+'.png" alt="" draggable="false" decoding="async"></div>'
+      +  '</div>'
+      +  '<div class="puddle"></div>'
+      +'</div>'
+      +'<div class="plate">'
+      +  '<div class="lv">grade '+ROMAN[i]+' · 第 '+(i+1)+' 级</div>'
+      +  '<h1 class="name-en">'+t.en+'</h1>'
+      +  '<div class="name-cn">'+t.cn+'（'+t.sub+'）</div>'
+      +  '<p class="desc">'+t.desc+'</p>'
+      +  '<div class="meter"><i style="width:'+Math.round((i+1)/TIERS.length*100)+'%"></i></div>'
+      +'</div>';
+    track.appendChild(card);
+
+    const tick=document.createElement('button');
+    tick.className='tick'; tick.textContent=ROMAN[i];
+    tick.setAttribute('aria-label','跳到第 '+(i+1)+' 级');
+    tick.addEventListener('click',function(){ go(i); });
+    railInner.appendChild(tick);
+  });
+
+  const cards=Array.prototype.slice.call(track.children);
+  const ticks=Array.prototype.slice.call(railInner.querySelectorAll('.tick'));
+
+  /* ═══════════ 状态与渲染 ═══════════ */
+  var idx=0, dragging=false, startX=0, startShift=0, shift=0;
+
+  /* 必须用 offsetWidth：getBoundingClientRect 会把 scale 变换算进去，步距会偏 */
+  function cardStep(){ return cards[0] ? cards[0].offsetWidth : 320; }
+
+  function layout(animate){
+    const step=cardStep();
+    const w=stage.clientWidth || window.innerWidth;
+    shift = w/2 - (idx*step + step/2);
+    track.classList.toggle('nosnap', animate===false);
+    track.style.transform='translateX('+shift.toFixed(2)+'px)';
+  }
+
+  function paint(){
+    const t=TIERS[idx];
+    cards.forEach(function(c,i){
+      const d=Math.abs(i-idx);
+      c.classList.toggle('active', d===0);
+      c.classList.toggle('near', d===1);
+    });
+    ticks.forEach(function(k,i){ k.classList.toggle('on', i===idx); });
+
+    ghostNum.textContent=ROMAN[idx];
+    document.documentElement.style.setProperty('--glow',t.glow);
+    const g=hex2rgb(t.glow);
+    document.documentElement.style.setProperty('--glow-soft','rgba('+g[0]+','+g[1]+','+g[2]+',.42)');
+    railFill.style.background=t.glow;
+    railFill.style.boxShadow='0 0 10px '+t.glow;
+    railFill.style.width=((idx)/(TIERS.length-1)*100).toFixed(2)+'%';
+
+    prevBtn.disabled = idx===0;
+    nextBtn.disabled = idx===TIERS.length-1;
+  }
+
+  function go(n, animate){
+    idx=Math.max(0,Math.min(TIERS.length-1,n));
+    layout(animate);
+    paint();
+  }
+
+  /* ═══════════ 交互 ═══════════ */
+  prevBtn.addEventListener('click',function(){ go(idx-1); });
+  nextBtn.addEventListener('click',function(){ go(idx+1); });
+
+  cards.forEach(function(c,i){
+    c.querySelector('.stone').addEventListener('click',function(){ if(i!==idx) go(i); });
+    c.querySelector('.stone').addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(i); }
+    });
+  });
+
+  window.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); go(idx+1); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); go(idx-1); }
+    else if(e.key==='Home'){ go(0); }
+    else if(e.key==='End'){ go(TIERS.length-1); }
+  });
+
+  /* 滚轮：横向优先，纵向兜底 */
+  var wheelLock=false;
+  stage.addEventListener('wheel',function(e){
+    const dx=Math.abs(e.deltaX)>Math.abs(e.deltaY)? e.deltaX : e.deltaY;
+    if (Math.abs(dx)<12 || wheelLock) return;
+    e.preventDefault();
+    wheelLock=true;
+    go(idx + (dx>0?1:-1));
+    setTimeout(function(){ wheelLock=false; }, 420);
+  },{passive:false});
+
+  /* 拖拽 / 触摸 */
+  stage.addEventListener('pointerdown',function(e){
+    if (e.button!==undefined && e.button!==0) return;
+    dragging=true; startX=e.clientX; startShift=shift;
+    stage.classList.add('dragging');
+    stage.setPointerCapture&&stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove',function(e){
+    if(!dragging) return;
+    const dx=e.clientX-startX;
+    track.classList.add('nosnap');
+    track.style.transform='translateX('+(startShift+dx).toFixed(2)+'px)';
+  });
+  function endDrag(e){
+    if(!dragging) return;
+    dragging=false; stage.classList.remove('dragging');
+    const dx=(e.clientX||startX)-startX;
+    const step=cardStep();
+    const moved=Math.round(-dx/step*1.0);
+    if (Math.abs(dx)>step*.14) go(idx+(dx<0?1:-1));
+    else go(idx);
+  }
+  stage.addEventListener('pointerup',endDrag);
+  stage.addEventListener('pointercancel',endDrag);
+  stage.addEventListener('pointerleave',function(e){ if(dragging) endDrag(e); });
+
+  window.addEventListener('resize',function(){ layout(false); requestAnimationFrame(function(){ layout(true); }); });
+
+  go(0,false);
+  requestAnimationFrame(function(){ layout(true); paint(); });
+})();
+</script>
+</body>
+</html>
