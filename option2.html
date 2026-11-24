@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d10">
-<title>ALLOY CORE · 合金核心等级索引</title>
+<title>METAL GRADES · 金属材质等级索引</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;500;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
@@ -305,8 +305,8 @@ header{
 <header>
   <div class="sys-l">
     <span class="dot"></span>
-    <span class="sys-title">Alloy Core</span>
-    <span class="sys-sub">合金核心 · 等级索引</span>
+    <span class="sys-title">Metal Grades</span>
+    <span class="sys-sub">金属材质 · 等级索引</span>
   </div>
   <div class="sys-r">
     <span>grade</span>
@@ -361,24 +361,24 @@ header{
 
   /* 主色取自各张图的实际像素采样，略提饱和用于氛围光 */
   const TIERS=[
-    { img:"a.png", en:"Meteorite",     cn:"陨石",     sub:"Meteorite",   accent:"#d08a52",
-      note:"外壳未经处理，内环仍在释放余热。" },
-    { img:"b.png", en:"Raw Ore",       cn:"原矿",     sub:"Iron Ore",    accent:"#8fa0b4",
-      note:"结构杂乱，导能通道尚未贯通。" },
-    { img:"c.png", en:"Refined Metal", cn:"精炼金属", sub:"Steel Ingot", accent:"#c65c30",
-      note:"第一次完成定向结晶，表面可抛光。" },
-    { img:"d.png", en:"Copper",        cn:"铜",       sub:"Copper",      accent:"#e0a94b",
-      note:"导能稳定，适合中低负载核心。" },
-    { img:"e.png", en:"Silver",        cn:"银",       sub:"Silver",      accent:"#ce8068",
-      note:"反射率跃升，开始出现镜面层。" },
-    { img:"f.png", en:"Gold",          cn:"金",       sub:"Gold",        accent:"#a89068",
-      note:"化学惰性，长周期运行不衰减。" },
-    { img:"g.png", en:"Amber",         cn:"琥珀",     sub:"Amber",       accent:"#7d8b9c",
-      note:"内层透光，可见封存的旧结构。" },
-    { img:"h.png", en:"Jadeite",       cn:"翡翠",     sub:"Jadeite",     accent:"#3d86e0",
-      note:"晶格致密，承载上限显著提高。" },
-    { img:"i.png", en:"Gemstone",      cn:"宝石级",   sub:"Gemstone",    accent:"#b04ae8",
-      note:"全光谱折射，核心等级上限。" }
+    { img:"a.png", en:"Cast Iron",       cn:"铸铁",     sub:"Fe-C",        accent:"#d08a52",
+      note:"最粗的底子，浇出来就定型，内环还留着铸造余温。" },
+    { img:"b.png", en:"Stainless Steel", cn:"不锈钢",   sub:"Fe-Cr-Ni",    accent:"#8fa0b4",
+      note:"加了铬，第一次有了不会生锈的表面。" },
+    { img:"c.png", en:"Copper",          cn:"紫铜",     sub:"Cu",          accent:"#c65c30",
+      note:"纯度上来了，导电和导热都排在最前面。" },
+    { img:"d.png", en:"Brass",           cn:"黄铜",     sub:"Cu-Zn",       accent:"#e0a94b",
+      note:"掺锌变硬，颜色也跟着亮起来。" },
+    { img:"e.png", en:"Rose Gold",       cn:"玫瑰金",   sub:"Au-Cu",       accent:"#ce8068",
+      note:"金里掺铜，硬度和颜色一起换掉。" },
+    { img:"f.png", en:"Bronze",          cn:"青铜",     sub:"Cu-Sn",       accent:"#a89068",
+      note:"掺锡，耐磨也耐蚀，能用很久。" },
+    { img:"g.png", en:"Tungsten",        cn:"钨钢",     sub:"WC-Co",       accent:"#7d8b9c",
+      note:"硬到不好加工，常规刀具几乎磨不动。" },
+    { img:"h.png", en:"Titanium",        cn:"钛合金",   sub:"Ti-6Al-4V",   accent:"#3d86e0",
+      note:"轻、强、耐腐蚀，阳极氧化出这身蓝。" },
+    { img:"i.png", en:"Niobium",         cn:"铌",       sub:"Nb",          accent:"#b04ae8",
+      note:"阳极氧化能调出整条光谱，等级到顶。" }
   ];
 
   /* 指标随等级单调上升，带轻微起伏；仅作示意 */
